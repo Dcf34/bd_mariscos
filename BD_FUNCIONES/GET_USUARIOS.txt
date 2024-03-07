@@ -1,0 +1,30 @@
+DELIMITER $$
+
+CREATE PROCEDURE sp_get_usuarios(
+    IN p_id_usuario INT,
+    IN p_activo BOOLEAN,
+    IN p_nombre VARCHAR(150),
+    IN p_correo VARCHAR(150),
+    IN p_cuenta_usuario VARCHAR(150)
+)
+BEGIN
+    SELECT
+        usr.ID_USUARIO,
+        usr.ACTIVO,
+        usr.FECHA_MODIFICACION,
+        usr.ID_USUARIO_MODIFICACION,
+        usr.FECHA_CREACION,
+        usr.ID_USUARIO_CREACION,
+        usr.NOMBRE,
+        usr.CORREO,
+        usr.CUENTA_USUARIO,
+        usr.TELEFONO
+    FROM usuarios usr
+    WHERE (p_id_usuario IS NULL OR usr.ID_USUARIO = p_id_usuario)
+    AND (p_activo IS NULL OR usr.ACTIVO = p_activo)
+    AND (p_nombre IS NULL OR usr.NOMBRE LIKE CONCAT('%', p_nombre, '%'))
+    AND (p_correo IS NULL OR usr.CORREO LIKE CONCAT('%', p_correo, '%'))
+    AND (p_cuenta_usuario IS NULL OR usr.CUENTA_USUARIO LIKE CONCAT('%', p_cuenta_usuario, '%'));
+END$$
+
+DELIMITER ;

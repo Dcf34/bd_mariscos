@@ -1,0 +1,57 @@
+DELIMITER $$
+
+CREATE PROCEDURE sp_set_permiso_usuario(
+    IN p_id_permiso_usuario INT,
+    IN p_activo BOOLEAN,
+    IN p_id_permiso VARCHAR(150),
+    IN p_id_usuario VARCHAR(150),
+    IN p_id_usuario_modificacion VARCHAR(150)
+)
+BEGIN
+    -- Verificar si existe el permiso usuario
+    IF EXISTS(SELECT 1 FROM permisos_usuarios WHERE id_permiso_usuario = p_id_permiso_usuario) THEN
+        -- Si existe, actualizamos el registro existente
+        UPDATE permisos_usuarios
+        SET 
+            ACTIVO = p_activo,
+            ID_PERMISO = p_id_permiso,
+            ID_USUARIO = p_id_usuario,
+            ID_USUARIO_MODIFICACION = p_id_usuario_modificacion,
+            FECHA_MODIFICACION = CURRENT_TIMESTAMP
+        WHERE id_permiso_usuario = p_id_permiso_usuario;
+
+        SELECT 
+            TRUE AS Exitoso,
+            'El permiso ha sido actualizado exitosamente' AS Mensaje,
+            null AS Id
+        ;
+    ELSE
+        -- Si no existe, insertamos un nuevo registro
+        INSERT INTO permisos_usuarios(
+            ACTIVO, 
+            FECHA_CREACION, 
+            ID_USUARIO_CREACION, 
+            FECHA_MODIFICACION,
+            ID_USUARIO_MODIFICACION, 
+            ID_PERMISO,
+            ID_USUARIO
+        )
+        VALUES(
+            TRUE,
+            CURRENT_TIMESTAMP,
+            p_id_usuario_modificacion,
+            CURRENT_TIMESTAMP,
+            p_id_usuario_modificacion,
+            p_id_permiso,
+            p_id_usuario
+        );
+
+        SELECT 
+            TRUE AS Exitoso,
+            'El permiso ha sido insertado exitosamente' AS Mensaje,
+            null AS Id
+        ;
+    END IF;
+END$$
+
+DELIMITER ;
