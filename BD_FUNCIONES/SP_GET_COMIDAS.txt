@@ -1,0 +1,24 @@
+DELIMITER $$
+
+CREATE PROCEDURE sp_get_comidas(
+    IN p_id_comida INT,
+    IN p_activo BOOLEAN
+)
+BEGIN
+    SELECT
+        c.ID_COMIDA,
+        c.ACTIVO,
+        c.FECHA_MODIFICACION, 
+        c.ID_USUARIO_MODIFICACION,
+        c.FECHA_CREACION,
+        c.ID_USUARIO_CREACION,
+        c.NOMBRE,
+        c.CODIGO,
+        c.PRECIO,
+        c.DESCRIPCION
+    FROM comidas c
+    WHERE (p_id_comida IS NULL OR c.ID_COMIDA = p_id_comida)
+    AND (p_activo IS NULL OR c.ACTIVO = p_activo);
+END$$
+
+DELIMITER ;

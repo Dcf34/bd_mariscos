@@ -1,0 +1,68 @@
+sp_set_comida
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_set_comida(
+    IN p_id_comida INT,
+    IN p_activo BOOLEAN,
+    IN p_nombre VARCHAR(150),
+    IN p_codigo VARCHAR(150),
+    IN p_precio DECIMAL(10,2),
+    IN p_descripcion VARCHAR(300),
+    IN p_id_usuario_modificacion INT
+)
+BEGIN
+     -- Verificar si existe la comida
+    IF EXISTS(SELECT 1 FROM comidas WHERE ID_COMIDA = p_id_comida) THEN
+        -- Si existe, actualizamos el registro existente
+        UPDATE comidas
+        SET 
+            ACTIVO = p_activo,
+            NOMBRE = p_nombre,
+            CODIGO = p_codigo,
+            PRECIO = p_precio,
+            DESCRIPCION = p_descripcion,
+            ID_USUARIO_MODIFICACION = p_id_usuario_modificacion,
+            FECHA_MODIFICACION = CURRENT_TIMESTAMP
+        WHERE ID_COMIDA = p_id_comida;
+
+        SELECT 
+            TRUE AS Exitoso,
+            'El registro sido actualizado exitosamente' AS Mensaje,
+            null AS Id
+        ;
+    ELSE
+        -- Si no existe, insertamos un nuevo registro
+        INSERT INTO comidas(
+            ACTIVO, 
+            FECHA_CREACION, 
+            ID_USUARIO_CREACION, 
+            FECHA_MODIFICACION,
+            ID_USUARIO_MODIFICACION, 
+            NOMBRE,
+            CODIGO,
+            PRECIO,
+            DESCRIPCION
+        )
+        VALUES(
+            TRUE,
+            CURRENT_TIMESTAMP,
+            p_id_usuario_modificacion,
+            CURRENT_TIMESTAMP,
+            p_id_usuario_modificacion,
+            p_nombre,
+            p_codigo,
+            p_precio,
+            p_descripcion
+        );
+
+        SELECT 
+            TRUE AS Exitoso,
+            'El registro ha sido insertado exitosamente' AS Mensaje,
+            null AS Id
+        ;
+    END IF;
+
+END$$
+
+DELIMITER ;

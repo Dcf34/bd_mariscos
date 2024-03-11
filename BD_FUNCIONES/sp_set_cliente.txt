@@ -1,0 +1,63 @@
+sp_set_cliente
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_set_cliente(
+    IN p_id_cliente INT,
+    IN p_activo BOOLEAN,
+    IN p_nombre VARCHAR(150),
+    IN p_telefono VARCHAR(20),
+    IN p_direccion VARCHAR(300),
+    IN p_id_usuario_modificacion INT
+)
+BEGIN
+    -- Verificar si existe el permiso usuario
+    IF EXISTS(SELECT 1 FROM clientes WHERE ID_CLIENTE = p_id_cliente) THEN
+        -- Si existe, actualizamos el registro existente
+        UPDATE clientes
+        SET 
+            ACTIVO = p_activo,
+            NOMBRE = p_nombre,
+            TELEFONO = p_telefono,
+            DIRECCION = p_direccion,
+            ID_USUARIO_MODIFICACION = p_id_usuario_modificacion,
+            FECHA_MODIFICACION = CURRENT_TIMESTAMP
+        WHERE ID_CLIENTE = p_id_cliente;
+
+        SELECT 
+            TRUE AS Exitoso,
+            'El cliente ha sido actualizado exitosamente' AS Mensaje,
+            null AS Id
+        ;
+    ELSE
+        -- Si no existe, insertamos un nuevo registro
+        INSERT INTO clientes(
+            ACTIVO, 
+            FECHA_CREACION, 
+            ID_USUARIO_CREACION, 
+            FECHA_MODIFICACION,
+            ID_USUARIO_MODIFICACION, 
+            NOMBRE,
+            TELEFONO,
+            DIRECCION
+        )
+        VALUES(
+            TRUE,
+            CURRENT_TIMESTAMP,
+            p_id_usuario_modificacion,
+            CURRENT_TIMESTAMP,
+            p_id_usuario_modificacion,
+            p_nombre,
+            p_telefono,
+            p_direccion
+        );
+
+        SELECT 
+            TRUE AS Exitoso,
+            'El cliente ha sido insertado exitosamente' AS Mensaje,
+            null AS Id
+        ;
+    END IF;
+END$$
+
+DELIMITER ;
