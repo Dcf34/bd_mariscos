@@ -1,0 +1,28 @@
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_insert_pedido` (IN `p_activo` BOOLEAN, IN `p_id_usuario_modificacion` INT, IN `p_id_cliente` INT, IN `p_id_venta` INT)   BEGIN
+
+    INSERT INTO pedidos(
+        ACTIVO, 
+        FECHA_CREACION, 
+        ID_USUARIO_CREACION, 
+        FECHA_MODIFICACION,
+        ID_USUARIO_MODIFICACION, 
+        ID_CLIENTE,
+        ID_VENTA
+    )
+    VALUES(
+        TRUE,
+        CURRENT_TIMESTAMP,
+        p_id_usuario_modificacion,
+        CURRENT_TIMESTAMP,
+        p_id_usuario_modificacion,
+        p_id_cliente,
+        p_id_venta
+    );
+
+    SELECT 
+        TRUE AS Exitoso,
+        'El pedido ha sido insertado exitosamente' AS Mensaje,
+        LAST_INSERT_ID() AS Id
+    ;
+
+END$$

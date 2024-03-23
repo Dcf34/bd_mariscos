@@ -1,0 +1,31 @@
+sp_get_detalles_venta
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_get_detalles_venta(
+    IN p_id_venta INT,
+    IN p_activo BOOLEAN
+)
+BEGIN
+    SELECT
+        dv.ID_DETALLE_VENTA,
+        dv.ACTIVO,
+        dv.FECHA_MODIFICACION,
+        dv.ID_USUARIO_MODIFICACION,
+        dv.FECHA_CREACION,
+        dv.ID_USUARIO_CREACION,
+        dv.ID_VENTA,
+        dv.ID_COMIDA,
+        dv.DESCRIPCION,
+        dv.PRECIO,
+        dv.CANTIDAD,
+        dv.APLICA_DESC,
+        dv.DESCUENTO,
+        dv.SUBTOTAL
+    FROM detalles_ventas dv
+    WHERE (p_id_venta IS NULL OR dv.ID_VENTA = p_id_venta)
+    AND (p_activo IS NULL OR dv.ACTIVO = p_activo);
+
+END$$
+
+DELIMITER ;

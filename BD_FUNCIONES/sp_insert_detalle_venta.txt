@@ -1,0 +1,94 @@
+sp_insert_detalle_venta
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_insert_detalle_venta(
+    IN p_activo BOOLEAN,
+    IN p_id_usuario_modificacion INT,
+    IN p_id_venta INT,
+    IN p_id_comida INT,
+    IN p_descripcion VARCHAR(300),
+    IN p_precio DECIMAL(10,2),
+    IN p_cantidad INT,
+    IN p_aplica_desc BOOLEAN,
+    IN p_descuento INT,
+    IN p_subtotal DECIMAL(10,2)
+)
+BEGIN
+
+    IF p_aplica_desc THEN
+        INSERT INTO detalles_ventas(
+            ACTIVO, 
+            FECHA_CREACION, 
+            ID_USUARIO_CREACION, 
+            FECHA_MODIFICACION,
+            ID_USUARIO_MODIFICACION, 
+            ID_VENTA,
+            ID_COMIDA,
+            DESCRIPCION,
+            PRECIO,
+            CANTIDAD,
+            APLICA_DESC,
+            DESCUENTO,
+            SUBTOTAL
+        )
+        VALUES(
+            TRUE,
+            CURRENT_TIMESTAMP,
+            p_id_usuario_modificacion,
+            CURRENT_TIMESTAMP,
+            p_id_usuario_modificacion,
+            p_id_venta,
+            p_id_comida,
+            p_descripcion,
+            p_precio,
+            p_cantidad,
+            p_aplica_desc,
+            p_descuento,
+            p_subtotal
+        );
+
+    ELSE
+        INSERT INTO detalles_ventas(
+            ACTIVO, 
+            FECHA_CREACION, 
+            ID_USUARIO_CREACION, 
+            FECHA_MODIFICACION,
+            ID_USUARIO_MODIFICACION, 
+            ID_VENTA,
+            ID_COMIDA,
+            DESCRIPCION,
+            PRECIO,
+            CANTIDAD,
+            APLICA_DESC,
+            DESCUENTO,
+            SUBTOTAL
+        )
+        VALUES(
+            TRUE,
+            CURRENT_TIMESTAMP,
+            p_id_usuario_modificacion,
+            CURRENT_TIMESTAMP,
+            p_id_usuario_modificacion,
+            p_id_venta,
+            p_id_comida,
+            p_descripcion,
+            p_precio,
+            p_cantidad,
+            p_aplica_desc,
+            NULL,
+            p_subtotal
+        );
+
+    END IF;
+
+    SELECT 
+        TRUE AS Exitoso,
+        'El detalle de venta ha sido insertado exitosamente' AS Mensaje,
+        NULL AS Id
+    ;
+
+
+END$$
+
+DELIMITER ;

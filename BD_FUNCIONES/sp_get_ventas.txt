@@ -1,0 +1,40 @@
+sp_get_ventas
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_get_ventas(
+    IN p_id_venta INT,
+    IN p_activo BOOLEAN,
+    IN p_fecha_desde DATETIME,
+    IN p_fecha_hasta DATETIME,
+    IN p_id_cliente INT,
+    IN p_total_desde DECIMAL(10,2),
+    IN p_total_hasta DECIMAL(10,2)
+)
+BEGIN
+    SELECT
+        v.ID_VENTA,
+        v.ACTIVO,
+        v.ID_USUARIO_MODIFICACION,
+        v.FECHA_MODIFICACION,
+        v.ID_USUARIO_CREACION,
+        v.FECHA_CREACION,
+        v.ID_CLIENTE,
+        c.NOMBRE AS NOMBRE_CLIENTE,
+        v.CODIGO_VENTA,
+        v.FECHA_VENTA,
+        v.TOTAL
+    FROM ventas v
+    INNER JOIN clientes c
+    ON c.ID_CLIENTE = v.ID_CLIENTE
+    WHERE (p_id_venta IS NULL OR v.ID_VENTA = p_id_venta)
+    AND (p_activo IS NULL OR v.ACTIVO = p_activo)
+    AND (p_fecha_desde IS NULL OR v.FECHA_VENTA >= p_fecha_desde)
+    AND (p_fecha_hasta IS NULL OR v.FECHA_VENTA <= p_fecha_hasta)
+    AND (p_id_cliente IS NULL OR v.ID_CLIENTE = p_id_cliente)
+    AND (p_total_desde IS NULL OR v.TOTAL >= p_total_desde)
+    AND (p_total_hasta IS NULL OR v.TOTAL <= p_total_hasta);
+
+END$$
+
+DELIMITER ;

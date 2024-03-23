@@ -1,0 +1,46 @@
+sp_insert_venta
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_insert_venta(
+    IN p_activo BOOLEAN,
+    IN p_id_usuario_modificacion INT,
+    IN p_id_cliente INT,
+    IN p_fecha_venta DATETIME,
+    IN p_total DECIMAL(10,2),
+    IN p_codigo_venta VARCHAR(10)
+)
+BEGIN
+
+    INSERT INTO ventas(
+        ACTIVO, 
+        FECHA_CREACION, 
+        ID_USUARIO_CREACION, 
+        FECHA_MODIFICACION,
+        ID_USUARIO_MODIFICACION, 
+        ID_CLIENTE,
+        CODIGO_VENTA,
+        FECHA_VENTA,
+        TOTAL
+    )
+    VALUES(
+        TRUE,
+        CURRENT_TIMESTAMP,
+        p_id_usuario_modificacion,
+        CURRENT_TIMESTAMP,
+        p_id_usuario_modificacion,
+        p_id_cliente,
+        p_codigo_venta,
+        p_fecha_venta,
+        p_total
+    );
+
+    SELECT 
+        TRUE AS Exitoso,
+        'La venta ha sido insertada exitosamente' AS Mensaje,
+        LAST_INSERT_ID() AS Id
+    ;
+
+END$$
+
+DELIMITER ;
