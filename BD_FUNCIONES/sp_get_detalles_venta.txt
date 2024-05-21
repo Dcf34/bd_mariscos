@@ -21,7 +21,8 @@ BEGIN
         dv.CANTIDAD,
         dv.APLICA_DESC,
         dv.DESCUENTO,
-        dv.SUBTOTAL
+        dv.SUBTOTAL,
+dv.ORDEN
     FROM detalles_ventas dv
     WHERE (p_id_venta IS NULL OR dv.ID_VENTA = p_id_venta)
     AND (p_activo IS NULL OR dv.ACTIVO = p_activo);

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 23-03-2024 a las 23:56:03
+-- Tiempo de generación: 21-05-2024 a las 02:55:03
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -25,7 +25,7 @@ DELIMITER $$
 --
 -- Procedimientos
 --
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_clientes` (IN `p_id_cliente` INT, IN `p_activo` BOOLEAN)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_clientes` (IN `p_id_cliente` INT, IN `p_activo` BOOLEAN, IN `p_nombre` VARCHAR(255), IN `p_telefono` VARCHAR(20))   BEGIN
     SELECT
         c.ID_CLIENTE,
         c.ACTIVO,
@@ -38,10 +38,12 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_clientes` (IN `p_id_cliente`
         c.DIRECCION
     FROM clientes c
     WHERE (p_id_cliente IS NULL OR c.ID_CLIENTE = p_id_cliente)
-    AND (p_activo IS NULL OR c.ACTIVO = p_activo);
+    AND (p_activo IS NULL OR c.ACTIVO = p_activo)
+    AND (p_nombre IS NULL OR c.NOMBRE LIKE CONCAT('%', p_nombre, '%')) -- Filtrar por nombre
+    AND (p_telefono IS NULL OR c.TELEFONO = p_telefono); -- Filtrar por teléfono
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_comidas` (IN `p_id_comida` INT, IN `p_activo` BOOLEAN)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_comidas` (IN `p_id_comida` INT, IN `p_activo` BOOLEAN, IN `p_precio` DECIMAL(10,2), IN `p_codigo` VARCHAR(255))   BEGIN
     SELECT
         c.ID_COMIDA,
         c.ACTIVO,
@@ -55,7 +57,9 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_comidas` (IN `p_id_comida` I
         c.DESCRIPCION
     FROM comidas c
     WHERE (p_id_comida IS NULL OR c.ID_COMIDA = p_id_comida)
-    AND (p_activo IS NULL OR c.ACTIVO = p_activo);
+    AND (p_activo IS NULL OR c.ACTIVO = p_activo)
+    AND (p_precio IS NULL OR c.PRECIO = p_precio)
+    AND (p_codigo IS NULL OR c.CODIGO LIKE CONCAT('%', p_codigo, '%'));
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_detalles_venta` (IN `p_id_venta` INT, IN `p_activo` BOOLEAN)   BEGIN
@@ -73,14 +77,15 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_detalles_venta` (IN `p_id_ve
         dv.CANTIDAD,
         dv.APLICA_DESC,
         dv.DESCUENTO,
-        dv.SUBTOTAL
+        dv.SUBTOTAL,
+dv.ORDEN
     FROM detalles_ventas dv
     WHERE (p_id_venta IS NULL OR dv.ID_VENTA = p_id_venta)
     AND (p_activo IS NULL OR dv.ACTIVO = p_activo);
 
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_pedidos` (IN `p_id_pedido` INT, IN `p_activo` BOOLEAN, IN `p_id_cliente` INT, IN `p_total_desde` DECIMAL(10,2), IN `p_total_hasta` DECIMAL(10,2))   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_pedidos` (IN `p_id_pedido` INT, IN `p_activo` BOOLEAN, IN `p_id_cliente` INT, IN `p_total_desde` DECIMAL(10,2), IN `p_total_hasta` DECIMAL(10,2), IN `p_id_venta` INT)   BEGIN
     SELECT
         p.ID_PEDIDO,
         p.ACTIVO,
@@ -93,15 +98,14 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_pedidos` (IN `p_id_pedido` I
         p.ID_VENTA,
         v.TOTAL
     FROM pedidos p
-    INNER JOIN clientes c
-        ON c.ID_CLIENTE = p.ID_CLIENTE
-    INNER JOIN ventas v
-        ON v.ID_VENTA = p.ID_VENTA
+    INNER JOIN clientes c ON c.ID_CLIENTE = p.ID_CLIENTE
+    INNER JOIN ventas v ON v.ID_VENTA = p.ID_VENTA
     WHERE (p_id_pedido IS NULL OR p.ID_PEDIDO = p_id_pedido)
     AND (p_activo IS NULL OR p.ACTIVO = p_activo)
     AND (p_id_cliente IS NULL OR p.ID_CLIENTE = p_id_cliente)
     AND (p_total_desde IS NULL OR v.TOTAL >= p_total_desde)
-    AND (p_total_hasta IS NULL OR v.TOTAL <= p_total_hasta);
+    AND (p_total_hasta IS NULL OR v.TOTAL <= p_total_hasta)
+    AND (p_id_venta IS NULL OR p.ID_VENTA = p_id_venta);
 END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_usuarios` (IN `p_id_usuario` INT, IN `p_activo` BOOLEAN, IN `p_nombre` VARCHAR(150), IN `p_correo` VARCHAR(150), IN `p_cuenta_usuario` VARCHAR(150))   BEGIN
@@ -152,6 +156,13 @@ END$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_insert_detalle_venta` (IN `p_activo` BOOLEAN, IN `p_id_usuario_modificacion` INT, IN `p_id_venta` INT, IN `p_id_comida` INT, IN `p_descripcion` VARCHAR(300), IN `p_precio` DECIMAL(10,2), IN `p_cantidad` INT, IN `p_aplica_desc` BOOLEAN, IN `p_descuento` INT, IN `p_subtotal` DECIMAL(10,2))   BEGIN
 
+    DECLARE v_ultimo_orden INT;
+
+    SELECT COALESCE(MAX(orden), 0) INTO v_ultimo_orden
+    FROM detalles_ventas
+    WHERE ID_VENTA = p_id_venta;
+
+    SET v_ultimo_orden = v_ultimo_orden + 1;
     IF p_aplica_desc THEN
         INSERT INTO detalles_ventas(
             ACTIVO, 
@@ -166,7 +177,8 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_insert_detalle_venta` (IN `p_act
             CANTIDAD,
             APLICA_DESC,
             DESCUENTO,
-            SUBTOTAL
+            SUBTOTAL,
+ORDEN
         )
         VALUES(
             TRUE,
@@ -181,7 +193,9 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_insert_detalle_venta` (IN `p_act
             p_cantidad,
             p_aplica_desc,
             p_descuento,
-            p_subtotal
+            p_subtotal,
+v_ultimo_orden
+
         );
 
     ELSE
@@ -199,7 +213,8 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_insert_detalle_venta` (IN `p_act
             CANTIDAD,
             APLICA_DESC,
             DESCUENTO, 
-            SUBTOTAL
+            SUBTOTAL,
+ORDEN
         )
         VALUES(
             TRUE,
@@ -214,7 +229,8 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_insert_detalle_venta` (IN `p_act
             p_cantidad,
             p_aplica_desc,
             NULL,
-            p_subtotal
+            p_subtotal,
+v_ultimo_orden
         );
 
     END IF;
@@ -465,8 +481,10 @@ CREATE TABLE `clientes` (
 --
 
 INSERT INTO `clientes` (`ID_CLIENTE`, `ACTIVO`, `FECHA_CREACION`, `ID_USUARIO_CREACION`, `FECHA_MODIFICACION`, `ID_USUARIO_MODIFICACION`, `NOMBRE`, `TELEFONO`, `DIRECCION`) VALUES
-(1, 1, '2024-03-07 18:16:20', 1, '2024-03-07 14:30:06', 1, 'CLIENTE 1', '87645342349', 'DIRECCION DE EJEMPLO #274'),
-(2, 1, '2024-03-07 14:32:14', 1, '2024-03-07 14:32:14', 1, 'Cliente 2', '86723436754', 'Direccion de ejemplo 2 #452');
+(1, 1, '2024-03-07 18:16:20', 1, '2024-04-05 22:21:29', 1, 'CLIENTE 1', '87645342343', 'DIRECCION DE EJEMPLO #279'),
+(2, 1, '2024-03-07 14:32:14', 1, '2024-04-05 22:27:27', 1, 'Cliente 2', '86723436754', 'Direccion de ejemplo 2 #459'),
+(3, 0, '2024-04-02 21:54:44', 1, '2024-04-02 21:55:11', 1, 'NOMBRE CLIENTE 3', '81234565442', 'DIRECCION 3'),
+(4, 0, '2024-04-02 22:46:04', 1, '2024-04-02 22:46:23', 1, 'NOMBRE CLIENTE 98', '81234565448', 'direccion2');
 
 -- --------------------------------------------------------
 
@@ -494,8 +512,10 @@ CREATE TABLE `comidas` (
 INSERT INTO `comidas` (`ID_COMIDA`, `ACTIVO`, `FECHA_CREACION`, `ID_USUARIO_CREACION`, `FECHA_MODIFICACION`, `ID_USUARIO_MODIFICACION`, `NOMBRE`, `CODIGO`, `PRECIO`, `DESCRIPCION`) VALUES
 (1, 1, '2024-03-07 23:58:42', 1, '2024-03-07 18:26:25', 1, 'COMIDA 1', 'CODE_861', 100.56, 'DESCRIPCION 1'),
 (2, 1, '2024-03-08 00:00:51', 1, '2024-03-15 17:19:06', 1, 'COMIDA 2', 'CODE_76529', 100.00, 'DESCRIPCION 2'),
-(3, 1, '2024-03-07 18:26:18', 1, '2024-03-07 18:26:18', 1, 'COMIDA 3', 'CODE_6524', 123.43, 'Descripcion 3'),
-(4, 0, '2024-03-07 18:26:49', 1, '2024-03-07 18:32:54', 1, 'Comida 4', 'CODE_65N2', 150.00, 'DESCRIPCION 4');
+(3, 1, '2024-03-07 18:26:18', 1, '2024-04-05 22:21:56', 1, 'COMIDA 3', 'CODE_6528', 123.43, 'Descripcion 3'),
+(4, 0, '2024-03-07 18:26:49', 1, '2024-03-07 18:32:54', 1, 'Comida 4', 'CODE_65N2', 150.00, 'DESCRIPCION 4'),
+(5, 0, '2024-04-02 21:55:31', 1, '2024-04-02 21:55:54', 1, 'COMIDA 671', 'CODE_7652926', 150.00, 'DESCRIPCION 67'),
+(6, 0, '2024-04-02 22:47:07', 1, '2024-04-02 22:47:23', 1, 'COMIDA 6769', 'CODE_76529654', 150.00, 'descripcion');
 
 -- --------------------------------------------------------
 
@@ -521,7 +541,7 @@ CREATE TABLE `configuracion` (
 --
 
 INSERT INTO `configuracion` (`ID_CONFIGURACION`, `ACTIVO`, `FECHA_CREACION`, `ID_USUARIO_CREACION`, `FECHA_MODIFICACION`, `ID_USUARIO_MODIFICACION`, `NOMBRE`, `TELEFONO`, `CORREO`, `DIRECCION`) VALUES
-(1, 1, '2024-03-08 22:55:35', 1, '2024-03-11 19:11:35', 1, 'Mariscos \"San Martín\"', '81767654543', 'mariscos_sm@outlook.com', 'Nombre de Colonia, Nombre Calle #243');
+(1, 1, '2024-03-08 22:55:35', 1, '2024-04-05 22:27:07', 1, 'Mariscos \"San Martín\"', '81767654542', 'mariscos_sm@outlook.com', 'Nombre de Colonia, Nombre Calle #74');
 
 -- --------------------------------------------------------
 
@@ -543,16 +563,22 @@ CREATE TABLE `detalles_ventas` (
   `CANTIDAD` int(11) NOT NULL,
   `APLICA_DESC` tinyint(1) NOT NULL,
   `DESCUENTO` int(11) DEFAULT NULL,
-  `SUBTOTAL` decimal(10,2) NOT NULL
+  `SUBTOTAL` decimal(10,2) NOT NULL,
+  `ORDEN` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `detalles_ventas`
 --
 
-INSERT INTO `detalles_ventas` (`ID_DETALLE_VENTA`, `ACTIVO`, `FECHA_CREACION`, `ID_USUARIO_CREACION`, `FECHA_MODIFICACION`, `ID_USUARIO_MODIFICACION`, `ID_VENTA`, `ID_COMIDA`, `DESCRIPCION`, `PRECIO`, `CANTIDAD`, `APLICA_DESC`, `DESCUENTO`, `SUBTOTAL`) VALUES
-(1, 1, '2024-03-21 16:45:42', 1, '2024-03-21 16:45:42', 1, 1, 1, 'DESCRIPCION 1', 100.56, 2, 1, 5, 191.06),
-(2, 1, '2024-03-21 16:45:42', 1, '2024-03-21 16:45:42', 1, 1, 2, 'DESCRIPCION 2', 100.00, 1, 0, NULL, 100.00);
+INSERT INTO `detalles_ventas` (`ID_DETALLE_VENTA`, `ACTIVO`, `FECHA_CREACION`, `ID_USUARIO_CREACION`, `FECHA_MODIFICACION`, `ID_USUARIO_MODIFICACION`, `ID_VENTA`, `ID_COMIDA`, `DESCRIPCION`, `PRECIO`, `CANTIDAD`, `APLICA_DESC`, `DESCUENTO`, `SUBTOTAL`, `ORDEN`) VALUES
+(1, 1, '2024-03-21 16:45:42', 1, '2024-03-21 16:45:42', 1, 1, 1, 'DESCRIPCION 1', 100.56, 2, 1, 5, 191.06, 1),
+(2, 1, '2024-03-21 16:45:42', 1, '2024-03-21 16:45:42', 1, 1, 2, 'DESCRIPCION 2', 100.00, 1, 0, NULL, 100.00, 2),
+(3, 1, '2024-04-02 16:39:36', 1, '2024-04-02 16:39:36', 1, 2, 1, 'DESCRIPCION 1', 100.56, 1, 1, 5, 95.53, 1),
+(4, 1, '2024-04-02 16:39:36', 1, '2024-04-02 16:39:36', 1, 2, 3, 'Descripcion 3', 123.43, 1, 0, NULL, 123.43, 2),
+(5, 1, '2024-04-02 22:49:13', 1, '2024-04-02 22:49:13', 1, 3, 2, 'DESCRIPCION 2', 100.00, 2, 1, 5, 190.00, 1),
+(6, 1, '2024-04-05 22:23:01', 1, '2024-04-05 22:23:01', 1, 4, 2, 'DESCRIPCION 2', 100.00, 1, 1, 5, 95.00, 1),
+(7, 1, '2024-04-05 22:26:42', 1, '2024-04-05 22:26:42', 1, 5, 1, 'DESCRIPCION 1', 100.56, 1, 1, 5, 95.53, 1);
 
 -- --------------------------------------------------------
 
@@ -576,7 +602,11 @@ CREATE TABLE `pedidos` (
 --
 
 INSERT INTO `pedidos` (`ID_PEDIDO`, `ACTIVO`, `FECHA_CREACION`, `ID_USUARIO_CREACION`, `FECHA_MODIFICACION`, `ID_USUARIO_MODIFICACION`, `ID_CLIENTE`, `ID_VENTA`) VALUES
-(1, 1, '2024-03-21 16:45:42', 1, '2024-03-21 16:45:42', 1, 1, 1);
+(1, 1, '2024-03-21 16:45:42', 1, '2024-03-21 16:45:42', 1, 1, 1),
+(2, 1, '2024-04-02 16:39:37', 1, '2024-04-02 16:39:37', 1, 1, 2),
+(3, 1, '2024-04-02 22:49:13', 1, '2024-04-02 22:49:13', 1, 1, 3),
+(4, 1, '2024-04-05 22:23:01', 1, '2024-04-05 22:23:01', 1, 1, 4),
+(5, 1, '2024-04-05 22:26:42', 1, '2024-04-05 22:26:42', 1, 1, 5);
 
 -- --------------------------------------------------------
 
@@ -598,8 +628,9 @@ INSERT INTO `permisos` (`ID_PERMISO`, `NOMBRE`) VALUES
 (2, 'Clientes'),
 (3, 'Configuracion'),
 (4, 'Comidas'),
-(5, 'Nueva Venta'),
-(6, 'Historial de Ventas');
+(5, 'Ventas'),
+(6, 'Pedidos'),
+(7, 'Reportes');
 
 -- --------------------------------------------------------
 
@@ -625,11 +656,14 @@ CREATE TABLE `permisos_usuarios` (
 INSERT INTO `permisos_usuarios` (`ID_PERMISO_USUARIO`, `ACTIVO`, `FECHA_CREACION`, `ID_USUARIO_CREACION`, `FECHA_MODIFICACION`, `ID_USUARIO_MODIFICACION`, `ID_PERMISO`, `ID_USUARIO`) VALUES
 (1, 1, '2024-03-07 04:26:32', 1, '2024-03-06 22:57:18', 1, 1, 1),
 (12, 1, '2024-03-06 22:59:22', 1, '2024-03-06 23:00:15', 1, 5, 1),
-(13, 1, '2024-03-06 22:59:22', 1, '2024-03-06 23:00:22', 1, 4, 1),
+(13, 1, '2024-03-06 22:59:22', 1, '2024-05-19 17:07:30', 1, 4, 1),
 (14, 1, '2024-03-06 22:59:29', 1, '2024-03-06 22:59:47', 1, 2, 1),
-(15, 1, '2024-03-06 22:59:54', 1, '2024-03-07 15:00:18', 1, 3, 1),
+(15, 1, '2024-03-06 22:59:54', 1, '2024-05-19 21:19:39', 1, 3, 1),
 (16, 1, '2024-03-06 23:00:37', 1, '2024-03-06 23:00:37', 1, 1, 2),
-(17, 1, '2024-03-06 23:00:37', 1, '2024-03-06 23:00:37', 1, 6, 2);
+(17, 1, '2024-03-06 23:00:37', 1, '2024-03-06 23:00:37', 1, 6, 2),
+(18, 1, '2024-04-05 22:21:01', 1, '2024-05-19 21:20:06', 1, 6, 1),
+(19, 1, '2024-05-19 17:07:30', 1, '2024-05-19 21:20:05', 1, 7, 1),
+(20, 1, '2024-05-19 22:07:48', 1, '2024-05-19 22:07:48', 1, 7, 5);
 
 -- --------------------------------------------------------
 
@@ -656,9 +690,11 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`ID_USUARIO`, `ACTIVO`, `FECHA_CREACION`, `ID_USUARIO_CREACION`, `FECHA_MODIFICACION`, `ID_USUARIO_MODIFICACION`, `NOMBRE`, `CORREO`, `TELEFONO`, `CLAVE`, `CUENTA_USUARIO`) VALUES
-(1, 1, '2024-03-06 00:23:10', 1, '2024-03-15 16:56:53', 1, 'Alejandro Estrada', 'alejandro.estradagrr@uanl.edu.mx', '81234565445', 'MTIz', 'admin'),
-(2, 1, '2024-03-07 02:19:21', 1, '2024-03-06 20:26:34', 1, 'Pedro Jimenez', 'pedro@correo.com', '1245643', 'MTIzNA==', 'admin2'),
-(3, 0, '2024-03-07 15:18:11', 1, '2024-03-07 15:18:11', 1, 'Paco Garcia', 'paco@correo.com.mx', '81234565482', '12345', 'paco_jx');
+(1, 1, '2024-03-06 00:23:10', 1, '2024-04-05 22:28:16', 1, 'Alejandro Estrada', 'alejandro.estradagrr@uanl.edu.mx', '81234565448', 'MTIz', 'admin'),
+(2, 0, '2024-03-07 02:19:21', 1, '2024-03-06 20:26:34', 1, 'Pedro Jimenez', 'pedro@correo.com', '1245643', 'MTIzNA==', 'admin2'),
+(3, 0, '2024-03-07 15:18:11', 1, '2024-03-07 15:18:11', 1, 'Paco Garcia', 'paco@correo.com.mx', '81234565482', '12345', 'paco_jx'),
+(4, 0, '2024-04-02 23:28:59', 1, '2024-04-02 21:54:11', 1, 'Jorge Garcia', 'jorge@outlook.com', '8176543452', 'MTIzNA==', 'jorge23'),
+(5, 1, '2024-04-03 04:44:35', 1, '2024-05-19 22:08:05', 1, 'Juan Garcia', 'juan@outlook.com', '81767654547', 'MTIzNA==', 'user1_juan');
 
 -- --------------------------------------------------------
 
@@ -684,7 +720,11 @@ CREATE TABLE `ventas` (
 --
 
 INSERT INTO `ventas` (`ID_VENTA`, `ACTIVO`, `FECHA_CREACION`, `ID_USUARIO_CREACION`, `FECHA_MODIFICACION`, `ID_USUARIO_MODIFICACION`, `ID_CLIENTE`, `CODIGO_VENTA`, `FECHA_VENTA`, `TOTAL`) VALUES
-(1, 1, '2024-03-21 16:45:42', 1, '2024-03-21 16:45:42', 1, 1, '9RR8GS20X6', '2024-03-21 22:45:37', 291.06);
+(1, 1, '2024-03-21 16:45:42', 1, '2024-03-21 16:45:42', 1, 1, '9RR8GS20X6', '2024-03-21 22:45:37', 291.06),
+(2, 1, '2024-04-02 16:39:36', 1, '2024-04-02 16:39:36', 1, 1, 'RF42QKE5TD', '2024-04-02 22:39:36', 218.96),
+(3, 1, '2024-04-02 22:49:13', 1, '2024-04-02 22:49:13', 1, 1, 'QZ93BV5CN4', '2024-04-03 04:49:13', 190.00),
+(4, 1, '2024-04-05 22:23:01', 1, '2024-04-05 22:23:01', 1, 1, 'PO7VA9N8ZC', '2024-04-06 04:23:01', 95.00),
+(5, 1, '2024-04-05 22:26:41', 1, '2024-04-05 22:26:41', 1, 1, 'YNG383OK8X', '2024-04-06 04:26:41', 95.53);
 
 --
 -- Índices para tablas volcadas
@@ -759,13 +799,13 @@ ALTER TABLE `ventas`
 -- AUTO_INCREMENT de la tabla `clientes`
 --
 ALTER TABLE `clientes`
-  MODIFY `ID_CLIENTE` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `ID_CLIENTE` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `comidas`
 --
 ALTER TABLE `comidas`
-  MODIFY `ID_COMIDA` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `ID_COMIDA` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `configuracion`
@@ -777,37 +817,37 @@ ALTER TABLE `configuracion`
 -- AUTO_INCREMENT de la tabla `detalles_ventas`
 --
 ALTER TABLE `detalles_ventas`
-  MODIFY `ID_DETALLE_VENTA` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `ID_DETALLE_VENTA` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT de la tabla `pedidos`
 --
 ALTER TABLE `pedidos`
-  MODIFY `ID_PEDIDO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `ID_PEDIDO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `permisos`
 --
 ALTER TABLE `permisos`
-  MODIFY `ID_PERMISO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `ID_PERMISO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT de la tabla `permisos_usuarios`
 --
 ALTER TABLE `permisos_usuarios`
-  MODIFY `ID_PERMISO_USUARIO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `ID_PERMISO_USUARIO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `ID_USUARIO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `ID_USUARIO` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `ventas`
 --
 ALTER TABLE `ventas`
-  MODIFY `ID_VENTA` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `ID_VENTA` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- Restricciones para tablas volcadas

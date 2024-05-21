@@ -2,7 +2,9 @@ DELIMITER $$
 
 CREATE PROCEDURE sp_get_comidas(
     IN p_id_comida INT,
-    IN p_activo BOOLEAN
+    IN p_activo BOOLEAN,
+    IN p_precio DECIMAL(10,2),
+    IN p_codigo VARCHAR(255)
 )
 BEGIN
     SELECT
@@ -18,7 +20,9 @@ BEGIN
         c.DESCRIPCION
     FROM comidas c
     WHERE (p_id_comida IS NULL OR c.ID_COMIDA = p_id_comida)
-    AND (p_activo IS NULL OR c.ACTIVO = p_activo);
+    AND (p_activo IS NULL OR c.ACTIVO = p_activo)
+    AND (p_precio IS NULL OR c.PRECIO = p_precio)
+    AND (p_codigo IS NULL OR c.CODIGO LIKE CONCAT('%', p_codigo, '%'));
 END$$
 
 DELIMITER ;

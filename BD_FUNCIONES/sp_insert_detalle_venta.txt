@@ -16,6 +16,14 @@ CREATE PROCEDURE sp_insert_detalle_venta(
 )
 BEGIN
 
+    DECLARE v_ultimo_orden INT;
+
+    SELECT COALESCE(MAX(orden), 0) INTO v_ultimo_orden
+    FROM detalles_ventas
+    WHERE ID_VENTA = p_id_venta;
+
+    SET v_ultimo_orden = v_ultimo_orden + 1;
+
     IF p_aplica_desc THEN
         INSERT INTO detalles_ventas(
             ACTIVO, 
@@ -30,7 +38,8 @@ BEGIN
             CANTIDAD,
             APLICA_DESC,
             DESCUENTO,
-            SUBTOTAL
+            SUBTOTAL,
+            ORDEN
         )
         VALUES(
             TRUE,
@@ -45,10 +54,12 @@ BEGIN
             p_cantidad,
             p_aplica_desc,
             p_descuento,
-            p_subtotal
+            p_subtotal,
+            v_ultimo_orden
         );
 
     ELSE
+    
         INSERT INTO detalles_ventas(
             ACTIVO, 
             FECHA_CREACION, 
@@ -61,8 +72,9 @@ BEGIN
             PRECIO,
             CANTIDAD,
             APLICA_DESC,
-            DESCUENTO,
-            SUBTOTAL
+            DESCUENTO, 
+            SUBTOTAL,
+            ORDEN
         )
         VALUES(
             TRUE,
@@ -77,7 +89,8 @@ BEGIN
             p_cantidad,
             p_aplica_desc,
             NULL,
-            p_subtotal
+            p_subtotal,
+            v_ultimo_orden
         );
 
     END IF;
@@ -85,7 +98,7 @@ BEGIN
     SELECT 
         TRUE AS Exitoso,
         'El detalle de venta ha sido insertado exitosamente' AS Mensaje,
-        NULL AS Id
+        v_ultimo_orden AS IdOrden
     ;
 
 

@@ -4,7 +4,9 @@ DELIMITER $$
 
 CREATE PROCEDURE sp_get_clientes(
     IN p_id_cliente INT,
-    IN p_activo BOOLEAN
+    IN p_activo BOOLEAN,
+    IN p_nombre VARCHAR(255), -- Nuevo parámetro para filtrar por nombre
+    IN p_telefono VARCHAR(20) -- Nuevo parámetro para filtrar por teléfono
 )
 BEGIN
     SELECT
@@ -19,7 +21,9 @@ BEGIN
         c.DIRECCION
     FROM clientes c
     WHERE (p_id_cliente IS NULL OR c.ID_CLIENTE = p_id_cliente)
-    AND (p_activo IS NULL OR c.ACTIVO = p_activo);
+    AND (p_activo IS NULL OR c.ACTIVO = p_activo)
+    AND (p_nombre IS NULL OR c.NOMBRE LIKE CONCAT('%', p_nombre, '%')) -- Filtrar por nombre
+    AND (p_telefono IS NULL OR c.TELEFONO = p_telefono); -- Filtrar por teléfono
 END$$
 
 DELIMITER ;

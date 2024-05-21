@@ -1,4 +1,14 @@
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_pedidos` (IN `p_id_pedido` INT, IN `p_activo` BOOLEAN, IN `p_id_cliente` INT, IN `p_total_desde` DECIMAL(10,2), IN `p_total_hasta` DECIMAL(10,2))   BEGIN
+DELIMITER $$
+
+CREATE PROCEDURE sp_get_pedidos (
+    IN p_id_pedido INT, 
+    IN p_activo BOOLEAN, 
+    IN p_id_cliente INT, 
+    IN p_total_desde DECIMAL(10,2), 
+    IN p_total_hasta DECIMAL(10,2),
+    IN p_id_venta INT
+)   
+BEGIN
     SELECT
         p.ID_PEDIDO,
         p.ACTIVO,
@@ -11,13 +21,14 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_get_pedidos` (IN `p_id_pedido` I
         p.ID_VENTA,
         v.TOTAL
     FROM pedidos p
-    INNER JOIN clientes c
-        ON c.ID_CLIENTE = p.ID_CLIENTE
-    INNER JOIN ventas v
-        ON v.ID_VENTA = p.ID_VENTA
+    INNER JOIN clientes c ON c.ID_CLIENTE = p.ID_CLIENTE
+    INNER JOIN ventas v ON v.ID_VENTA = p.ID_VENTA
     WHERE (p_id_pedido IS NULL OR p.ID_PEDIDO = p_id_pedido)
     AND (p_activo IS NULL OR p.ACTIVO = p_activo)
     AND (p_id_cliente IS NULL OR p.ID_CLIENTE = p_id_cliente)
     AND (p_total_desde IS NULL OR v.TOTAL >= p_total_desde)
-    AND (p_total_hasta IS NULL OR v.TOTAL <= p_total_hasta);
+    AND (p_total_hasta IS NULL OR v.TOTAL <= p_total_hasta)
+    AND (p_id_venta IS NULL OR p.ID_VENTA = p_id_venta);
 END$$
+
+DELIMITER ;
